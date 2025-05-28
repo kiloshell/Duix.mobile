@@ -34,6 +34,10 @@
 		A0FC3DAB2B282F1D0069EA0E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0FC3DAA2B282F1D0069EA0E /* Assets.xcassets */; };
 		A0FC3DAE2B282F1D0069EA0E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A0FC3DAC2B282F1D0069EA0E /* LaunchScreen.storyboard */; };
 		A0FC3DB12B282F1D0069EA0E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A0FC3DB02B282F1D0069EA0E /* main.m */; };
+		FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */; };
+		FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9C2DE7570F006A9F8D /* ChatMessage.m */; };
+		FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA02DE7570F006A9F8D /* ChatViewController.m */; };
+		FED34FA62DE7571E006A9F8D /* BailianClient.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA52DE7571E006A9F8D /* BailianClient.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +113,14 @@
 		A0FC3EAE2B2855AC0069EA0E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		CC0F95EC41CD11CE487F313E /* Pods-GJLocalDigitalDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GJLocalDigitalDemo.release.xcconfig"; path = "Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo.release.xcconfig"; sourceTree = "<group>"; };
 		CDE763B79F6CA6E21DE1F3CE /* Pods-GJLocalDigitalDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GJLocalDigitalDemo.debug.xcconfig"; path = "Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		FED34F9B2DE7570F006A9F8D /* ChatMessage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessage.h; sourceTree = "<group>"; };
+		FED34F9C2DE7570F006A9F8D /* ChatMessage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatMessage.m; sourceTree = "<group>"; };
+		FED34F9D2DE7570F006A9F8D /* ChatMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessageCell.h; sourceTree = "<group>"; };
+		FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatMessageCell.m; sourceTree = "<group>"; };
+		FED34F9F2DE7570F006A9F8D /* ChatViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatViewController.h; sourceTree = "<group>"; };
+		FED34FA02DE7570F006A9F8D /* ChatViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatViewController.m; sourceTree = "<group>"; };
+		FED34FA42DE7571E006A9F8D /* BailianClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BailianClient.h; sourceTree = "<group>"; };
+		FED34FA52DE7571E006A9F8D /* BailianClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BailianClient.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -247,6 +259,14 @@
 				A0FC3DAC2B282F1D0069EA0E /* LaunchScreen.storyboard */,
 				A0FC3DAF2B282F1D0069EA0E /* Info.plist */,
 				A0FC3DB02B282F1D0069EA0E /* main.m */,
+				FED34F9B2DE7570F006A9F8D /* ChatMessage.h */,
+				FED34F9C2DE7570F006A9F8D /* ChatMessage.m */,
+				FED34F9D2DE7570F006A9F8D /* ChatMessageCell.h */,
+				FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */,
+				FED34F9F2DE7570F006A9F8D /* ChatViewController.h */,
+				FED34FA02DE7570F006A9F8D /* ChatViewController.m */,
+				FED34FA42DE7571E006A9F8D /* BailianClient.h */,
+				FED34FA52DE7571E006A9F8D /* BailianClient.m */,
 			);
 			path = GJLocalDigitalDemo;
 			sourceTree = "<group>";
@@ -397,13 +417,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -419,6 +435,10 @@
 			files = (
 				A04821E42B2C4EC8005E06BD /* SVRadialGradientLayer.m in Sources */,
 				A0FC3DA62B282F1B0069EA0E /* ViewController.mm in Sources */,
+				FED34FA62DE7571E006A9F8D /* BailianClient.m in Sources */,
+				FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */,
+				FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */,
+				FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */,
 				A0BB09402B3C34A700BF0CC1 /* GJLDigitalAnswerModel.m in Sources */,
 				A0FC3DA02B282F1B0069EA0E /* AppDelegate.m in Sources */,
 				A04821D12B2C48BC005E06BD /* HttpClient.m in Sources */,
@@ -579,7 +599,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RHWTKM535Q;
+				DEVELOPMENT_TEAM = 679Y27U8UH;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/GJLocalDigitalDemo",
@@ -601,7 +621,7 @@
 				);
 				MARKETING_VERSION = 1.1;
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.wanruyi.sdkdemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wanruyi.sdkdemo111;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -616,7 +636,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RHWTKM535Q;
+				DEVELOPMENT_TEAM = 679Y27U8UH;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/GJLocalDigitalDemo",
@@ -638,7 +658,7 @@
 				);
 				MARKETING_VERSION = 1.1;
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.wanruyi.sdkdemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wanruyi.sdkdemo111;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -21,6 +21,10 @@
 #import "SSZipArchive.h"
 #import "GJDownWavTool.h"
 #import "GYAccess.h"
+#import "ChatMessage.h"
+#import "ChatMessageCell.h"
+#import "BailianClient.h"
+
 
 
 //
@@ -30,7 +34,7 @@
 #define DIGITALMODELURL @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/bendi3_20240518.zip"
 
 
-@interface ViewController ()<GJDownWavToolDelegate>
+@interface ViewController ()<GJDownWavToolDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate>
 @property(nonatomic,strong)UIView *showView;
 @property(nonatomic,strong)NSString * basePath;
 @property(nonatomic,strong)NSString * digitalPath;
@@ -69,6 +73,15 @@
 
 @property (nonatomic, strong) NSString *qaSessionId;
 
+@property (nonatomic, strong) UIButton *chatButton;
+
+@property (nonatomic, strong) UIView *chatView;
+@property (nonatomic, strong) UITableView *chatTableView;
+@property (nonatomic, strong) UITextField *chatInputField;
+@property (nonatomic, strong) UIView *chatInputContainerView;
+@property (nonatomic, strong) NSMutableArray<ChatMessage *> *chatMessages;
+@property (nonatomic, strong) UIButton *closeChatButton;
+
 @end
 
 @implementation ViewController
@@ -98,20 +111,24 @@
     self.view.backgroundColor=[UIColor greenColor];
     
     [self.view addSubview:self.imageView];
- 
     [self.view addSubview:self.showView];
-    
-
-    
-    
     [self.view addSubview:self.questionLabel];
-    
     [self.view addSubview:self.answerLabel];
     
+    // 添加聊天按钮
+    self.chatButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [self.chatButton setTitle:@"对话" forState:UIControlStateNormal];
+    [self.chatButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    self.chatButton.backgroundColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0];
+    self.chatButton.layer.cornerRadius = 5;
+    [self.chatButton addTarget:self action:@selector(toggleChat) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.chatButton];
     
-//    UITapGestureRecognizer * tap=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toShowquestion)];
-//    tap.numberOfTapsRequired=2;
-//    [self.showView addGestureRecognizer:tap];
+    // 设置按钮位置
+    self.chatButton.frame = CGRectMake(self.view.bounds.size.width - 80, 140, 60, 40);
+    
+    // 初始化聊天相关视图
+    [self setupChatView];
     
     UIButton * startbtn=[UIButton buttonWithType:UIButtonTypeCustom];
     startbtn.frame=CGRectMake(40, self.view.frame.size.height-100, 40, 40);
@@ -162,6 +179,14 @@
   
     
 
+//    // 添加聊天按钮
+//    self.chatButton = [UIButton buttonWithType:UIButtonTypeSystem];
+//    [self.chatButton setTitle:@"对话" forState:UIControlStateNormal];
+//    [self.chatButton addTarget:self action:@selector(openChat) forControlEvents:UIControlEventTouchUpInside];
+//    [self.view addSubview:self.chatButton];
+//
+//    // 设置按钮位置
+//    self.chatButton.frame = CGRectMake(self.view.bounds.size.width - 80, 40, 60, 40);
 }
 -(void)initALL
 {
@@ -489,5 +514,139 @@
     return _answerLabel;
 }
 
+- (void)toggleChat {
+    NSLog(@"Toggle chat view"); // 添加日志
+    if (self.chatView.hidden) {
+        // 显示聊天视图
+        self.chatView.hidden = NO;
+        [self.chatInputField becomeFirstResponder]; // 显示键盘
+    } else {
+        // 隐藏聊天视图
+        self.chatView.hidden = YES;
+        [self.chatInputField resignFirstResponder]; // 隐藏键盘
+    }
+}
+
+#pragma mark - UITableViewDataSource
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return self.chatMessages.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    ChatMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell"];
+    [cell configureWithMessage:self.chatMessages[indexPath.row]];
+    return cell;
+}
+
+#pragma mark - UITextFieldDelegate
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [self sendChatMessage];
+    return YES;
+}
+
+#pragma mark - Actions
+
+- (void)sendChatMessage {
+    if (self.chatInputField.text.length == 0) return;
+    
+    // 添加用户消息
+    ChatMessage *userMessage = [ChatMessage messageWithContent:self.chatInputField.text type:ChatMessageTypeUser];
+    [self.chatMessages addObject:userMessage];
+    
+    // 清空输入框
+    self.chatInputField.text = @"";
+    
+    // 刷新表格
+    [self.chatTableView reloadData];
+    
+    // 滚动到底部
+    [self scrollChatToBottom];
+    
+    // 模拟获取回答
+    [self getAnswerForMessage:userMessage.content];
+}
+
+- (void)getAnswerForMessage:(NSString *)message {
+    [SVProgressHUD showWithStatus:@"正在思考..."];
+    
+    [[QianwenClient sharedInstance] chatWithMessage:message completion:^(NSString *response, NSError *error) {
+        [SVProgressHUD dismiss];
+        
+        if (error) {
+            [SVProgressHUD showErrorWithStatus:error.localizedDescription];
+            return;
+        }
+        
+        if (response) {
+            ChatMessage *assistantMessage = [ChatMessage messageWithContent:response type:ChatMessageTypeAssistant];
+            [self.chatMessages addObject:assistantMessage];
+            [self.chatTableView reloadData];
+            [self scrollChatToBottom];
+        }
+    }];
+}
+
+- (void)scrollChatToBottom {
+    if (self.chatMessages.count > 0) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.chatMessages.count - 1 inSection:0];
+        [self.chatTableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
+    }
+}
+
+- (void)setupChatView {
+    // 创建聊天视图
+    self.chatView = [[UIView alloc] initWithFrame:self.view.bounds];
+    self.chatView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.7];
+    self.chatView.hidden = YES;
+    [self.view addSubview:self.chatView];
+    
+    // 添加关闭按钮
+    self.closeChatButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [self.closeChatButton setTitle:@"关闭" forState:UIControlStateNormal];
+    [self.closeChatButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    self.closeChatButton.backgroundColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0];
+    self.closeChatButton.layer.cornerRadius = 5;
+    [self.closeChatButton addTarget:self action:@selector(toggleChat) forControlEvents:UIControlEventTouchUpInside];
+    [self.chatView addSubview:self.closeChatButton];
+    self.closeChatButton.frame = CGRectMake(self.view.bounds.size.width - 80, 140, 60, 40);
+    
+    // 设置输入框容器
+    self.chatInputContainerView = [[UIView alloc] init];
+    self.chatInputContainerView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.9];
+    [self.chatView addSubview:self.chatInputContainerView];
+    
+    // 设置输入框
+    self.chatInputField = [[UITextField alloc] init];
+    self.chatInputField.placeholder = @"请输入消息...";
+    self.chatInputField.borderStyle = UITextBorderStyleRoundedRect;
+    self.chatInputField.delegate = self;
+    [self.chatInputContainerView addSubview:self.chatInputField];
+    
+    // 设置发送按钮
+    UIButton *sendButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [sendButton setTitle:@"发送" forState:UIControlStateNormal];
+    [sendButton addTarget:self action:@selector(sendChatMessage) forControlEvents:UIControlEventTouchUpInside];
+    [self.chatInputContainerView addSubview:sendButton];
+    
+    // 设置表格视图
+    self.chatTableView = [[UITableView alloc] init];
+    self.chatTableView.delegate = self;
+    self.chatTableView.dataSource = self;
+    self.chatTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.chatTableView.backgroundColor = [UIColor clearColor];
+    [self.chatTableView registerClass:[ChatMessageCell class] forCellReuseIdentifier:@"ChatMessageCell"];
+    [self.chatView addSubview:self.chatTableView];
+    
+    // 初始化消息数组
+    self.chatMessages = [NSMutableArray array];
+    
+    // 设置约束
+    self.chatInputContainerView.frame = CGRectMake(0, self.view.bounds.size.height - 60, self.view.bounds.size.width, 60);
+    self.chatInputField.frame = CGRectMake(10, 10, self.view.bounds.size.width - 80, 40);
+    sendButton.frame = CGRectMake(self.view.bounds.size.width - 60, 10, 50, 40);
+    self.chatTableView.frame = CGRectMake(0, 100, self.view.bounds.size.width, self.view.bounds.size.height - 160);
+}
 
 @end
