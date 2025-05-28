@@ -24,6 +24,7 @@
 #import "ChatMessage.h"
 #import "ChatMessageCell.h"
 #import "BailianClient.h"
+#import "AudioUtil.h"
 
 
 
@@ -584,6 +585,13 @@
             [self.chatMessages addObject:assistantMessage];
             [self.chatTableView reloadData];
             [self scrollChatToBottom];
+            
+            // 将回答转换为语音并播放
+            [[AudioUtil sharedInstance] convertTextToSpeech:response completion:^(BOOL success, NSError *error) {
+                if (!success) {
+                    NSLog(@"音频转换失败: %@", error);
+                }
+            }];
         }
     }];
 }

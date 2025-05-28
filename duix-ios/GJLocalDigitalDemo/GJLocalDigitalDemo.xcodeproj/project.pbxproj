@@ -38,6 +38,8 @@
 		FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9C2DE7570F006A9F8D /* ChatMessage.m */; };
 		FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA02DE7570F006A9F8D /* ChatViewController.m */; };
 		FED34FA62DE7571E006A9F8D /* BailianClient.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA52DE7571E006A9F8D /* BailianClient.m */; };
+		FED356DB2DE75851006A9F8D /* AudioUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = FED356DA2DE75851006A9F8D /* AudioUtil.m */; };
+		FED356DD2DE758DB006A9F8D /* test_tts.py in Resources */ = {isa = PBXBuildFile; fileRef = FED356DC2DE758DB006A9F8D /* test_tts.py */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +123,9 @@
 		FED34FA02DE7570F006A9F8D /* ChatViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatViewController.m; sourceTree = "<group>"; };
 		FED34FA42DE7571E006A9F8D /* BailianClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BailianClient.h; sourceTree = "<group>"; };
 		FED34FA52DE7571E006A9F8D /* BailianClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BailianClient.m; sourceTree = "<group>"; };
+		FED356D92DE75851006A9F8D /* AudioUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioUtil.h; sourceTree = "<group>"; };
+		FED356DA2DE75851006A9F8D /* AudioUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AudioUtil.m; sourceTree = "<group>"; };
+		FED356DC2DE758DB006A9F8D /* test_tts.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tts.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -267,6 +272,9 @@
 				FED34FA02DE7570F006A9F8D /* ChatViewController.m */,
 				FED34FA42DE7571E006A9F8D /* BailianClient.h */,
 				FED34FA52DE7571E006A9F8D /* BailianClient.m */,
+				FED356D92DE75851006A9F8D /* AudioUtil.h */,
+				FED356DA2DE75851006A9F8D /* AudioUtil.m */,
+				FED356DC2DE758DB006A9F8D /* test_tts.py */,
 			);
 			path = GJLocalDigitalDemo;
 			sourceTree = "<group>";
@@ -378,6 +386,7 @@
 				A0D81D9B2B299568002F98C1 /* bg2.jpg in Resources */,
 				A04821E82B2C4EC8005E06BD /* SVProgressHUD.bundle in Resources */,
 				A0F908C42B32E97500962346 /* 3.wav in Resources */,
+				FED356DD2DE758DB006A9F8D /* test_tts.py in Resources */,
 				A0F908C32B32E97500962346 /* 2.wav in Resources */,
 				A0FC3DAB2B282F1D0069EA0E /* Assets.xcassets in Resources */,
 				A0FC3DA92B282F1B0069EA0E /* Main.storyboard in Resources */,
@@ -439,6 +448,7 @@
 				FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */,
 				FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */,
 				FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */,
+				FED356DB2DE75851006A9F8D /* AudioUtil.m in Sources */,
 				A0BB09402B3C34A700BF0CC1 /* GJLDigitalAnswerModel.m in Sources */,
 				A0FC3DA02B282F1B0069EA0E /* AppDelegate.m in Sources */,
 				A04821D12B2C48BC005E06BD /* HttpClient.m in Sources */,

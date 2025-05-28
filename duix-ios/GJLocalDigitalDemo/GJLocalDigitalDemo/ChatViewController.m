@@ -8,6 +8,7 @@
 #import "ChatViewController.h"
 #import "ChatMessage.h"
 #import "ChatMessageCell.h"
+#import "AudioUtil.h"
 
 @interface ChatViewController () <UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate>
 
@@ -113,7 +114,11 @@
         [self scrollToBottom];
         
         // 将文字转换为语音并播放
-        NSLog(@"准备将文字转换为语音: %@", answer);
+        [[AudioUtil sharedInstance] convertTextToSpeech:answer completion:^(BOOL success, NSError *error) {
+            if (!success) {
+                NSLog(@"音频转换失败: %@", error);
+            }
+        }];
     });
 }
 
