@@ -618,7 +618,9 @@ static GJLDigitalManager * manager = nil;
     {
         self.audioPlayEnd();
     }
-
+    
+    // 发送播放完成通知
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"GJLDigitalManagerDidFinishSpeaking" object:nil];
 }
 
 -(void)toStart:(void (^) (BOOL isSuccess, NSString *errorMsg))block
@@ -970,8 +972,6 @@ static GJLDigitalManager * manager = nil;
 #pragma mark-----------播放本地音频----------------------
 -(void)toSpeakWithPath:(NSString*)wavPath
 {
-   
-    
     if([self isGetAuth]==0)
     {
        return;

@@ -7,11 +7,9 @@
 
 #import "AudioUtil.h"
 #import <AVFoundation/AVFoundation.h>
-
+#import <GJLocalDigitalSDK/GJLDigitalManager.h>
 @interface AudioUtil () <NSURLSessionDataDelegate>
 
-@property (nonatomic, strong) AVAudioEngine *audioEngine;
-@property (nonatomic, strong) AVAudioPlayerNode *playerNode;
 @property (nonatomic, strong) NSURLSession *session;
 @property (nonatomic, strong) NSMutableData *audioData;
 @property (nonatomic, strong) dispatch_queue_t audioQueue;
@@ -20,9 +18,11 @@
 @property (nonatomic, assign) BOOL isStreaming;
 @property (nonatomic, assign) BOOL isFirstChunk;
 @property (nonatomic, assign) NSInteger wavHeaderSize;
-@property (nonatomic, assign) NSInteger totalBuffers;
-@property (nonatomic, assign) NSInteger completedBuffers;
-@property (nonatomic, assign) BOOL isProcessingLastChunk;
+@property (nonatomic, strong) NSMutableArray *audioChunks;
+@property (nonatomic, strong) NSString *currentAudioFilePath;
+@property (nonatomic, assign) NSInteger chunkIndex;
+@property (nonatomic, assign) NSInteger currentPlayIndex;
+@property (nonatomic, strong) NSTimer *playTimer;
 
 @end
 
@@ -44,27 +44,21 @@
         self.audioQueue = dispatch_queue_create("com.audio.streaming", DISPATCH_QUEUE_SERIAL);
         self.isFirstChunk = YES;
         self.wavHeaderSize = 44;
-        self.totalBuffers = 0;
-        self.completedBuffers = 0;
+        self.audioChunks = [NSMutableArray array];
+        self.chunkIndex = 0;
+        self.currentPlayIndex = 0;
+        
+        // 注册通知
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                               selector:@selector(handleSpeakingFinished)
+                                                   name:@"GJLDigitalManagerDidFinishSpeaking"
+                                                 object:nil];
         
         // 创建音频格式
         self.audioFormat = [[AVAudioFormat alloc] initWithCommonFormat:AVAudioPCMFormatFloat32
-                                                           sampleRate:44100
+                                                           sampleRate:16000
                                                              channels:1
                                                           interleaved:NO];
-        
-        // 初始化音频引擎
-        self.audioEngine = [[AVAudioEngine alloc] init];
-        self.playerNode = [[AVAudioPlayerNode alloc] init];
-        [self.audioEngine attachNode:self.playerNode];
-        [self.audioEngine connect:self.playerNode to:self.audioEngine.mainMixerNode format:self.audioFormat];
-        
-        // 启动音频引擎
-        NSError *error;
-        [self.audioEngine startAndReturnError:&error];
-        if (error) {
-            NSLog(@"音频引擎启动失败: %@", error);
-        }
         
         // 设置 URLSession
         NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
@@ -73,30 +67,32 @@
     return self;
 }
 
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self.playTimer invalidate];
+    self.playTimer = nil;
+}
+
 - (void)convertTextToSpeech:(NSString *)text completion:(void(^)(BOOL success, NSError *error))completion {
     if (self.isStreaming) return;
     
     self.isStreaming = YES;
     [self.audioData setLength:0];
     self.isFirstChunk = YES;
-    self.totalBuffers = 0;
-    self.completedBuffers = 0;
-    self.isProcessingLastChunk = NO;
     
     // 准备请求参数
     NSDictionary *params = @{
+        @"appkey": @"w2Yuyzd5ZrxSOeo7",
         @"text": text,
-        @"reference_id": @"Zhang075-1925967372432748545",
-        @"format": @"wav",
-        @"streaming": @YES,
-        @"use_memory_cache": @"on",
-        @"seed": @1
+        @"token": @"00ce4ec1365b4891b13554a58f470b1b",
+        @"format": @"wav"
     };
     
-    NSURL *url = [NSURL URLWithString:@"http://3.236.225.202:7860/v1/tts"];
+    NSURL *url = [NSURL URLWithString:@"https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/tts"];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.HTTPMethod = @"POST";
     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    [request setValue:@"00ce4ec1365b4891b13554a58f470b1b" forHTTPHeaderField:@"X-NLS-Token"];
     
     NSError *error;
     request.HTTPBody = [NSJSONSerialization dataWithJSONObject:params options:0 error:&error];
@@ -112,80 +108,142 @@
     [task resume];
 }
 
-- (void)processAudioData:(NSData *)data isLastChunk:(BOOL)isLastChunk {
-    if (self.isFirstChunk) {
-        if (data.length > self.wavHeaderSize) {
-            // 跳过 WAV 文件头
-            [self.audioData appendData:[data subdataWithRange:NSMakeRange(self.wavHeaderSize, data.length - self.wavHeaderSize)]];
-        } else {
-            [self.audioData appendData:data];
-        }
-        self.isFirstChunk = NO;
-    } else {
-        [self.audioData appendData:data];
+- (NSString *)saveAudioChunk:(NSData *)data {
+    NSString *documentsPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *fileName = [NSString stringWithFormat:@"audio_chunk_%ld.wav", (long)self.chunkIndex++];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:fileName];
+    
+    NSLog(@"保存音频块到: %@, 大小: %lu", filePath, (unsigned long)data.length);
+    
+    NSMutableData *wavData = [NSMutableData data];
+    
+    // 为每个块添加 WAV 头
+    [wavData appendData:[self createWavHeaderWithDataLength:data.length]];
+    [wavData appendData:data];
+    
+    NSError *error;
+    BOOL success = [wavData writeToFile:filePath options:NSDataWritingAtomic error:&error];
+    if (!success) {
+        NSLog(@"保存音频块失败: %@", error);
+        return nil;
     }
     
-    // 当累积足够的数据时进行处理
-    NSInteger minBufferSize = 8192;
-    while (self.audioData.length >= minBufferSize || (isLastChunk && self.audioData.length > 0)) {
-        NSInteger processSize = MIN(self.audioData.length, minBufferSize);
-        NSData *processData = [self.audioData subdataWithRange:NSMakeRange(0, processSize)];
-        [self.audioData replaceBytesInRange:NSMakeRange(0, processSize) withBytes:NULL length:0];
+    // 验证文件是否保存成功
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:filePath]) {
+        NSLog(@"错误：音频块文件未成功保存: %@", filePath);
+        return nil;
+    }
+    
+    NSDictionary *attributes = [fileManager attributesOfItemAtPath:filePath error:nil];
+    NSNumber *fileSize = [attributes objectForKey:NSFileSize];
+    NSLog(@"音频块保存成功，大小: %@ 字节", fileSize);
+    
+    return filePath;
+}
+
+- (NSData *)createWavHeaderWithDataLength:(NSInteger)dataLength {
+    NSMutableData *header = [NSMutableData data];
+    
+    // RIFF 头
+    [header appendBytes:"RIFF" length:4];
+    uint32_t fileSize = (uint32_t)(dataLength + 36);
+    [header appendBytes:&fileSize length:4];
+    [header appendBytes:"WAVE" length:4];
+    
+    // fmt 子块
+    [header appendBytes:"fmt " length:4];
+    uint32_t fmtSize = 16;
+    [header appendBytes:&fmtSize length:4];
+    uint16_t audioFormat = 1; // PCM
+    [header appendBytes:&audioFormat length:2];
+    uint16_t numChannels = 1;
+    [header appendBytes:&numChannels length:2];
+    uint32_t sampleRate = 16000;
+    [header appendBytes:&sampleRate length:4];
+    uint32_t byteRate = sampleRate * numChannels * 2;
+    [header appendBytes:&byteRate length:4];
+    uint16_t blockAlign = numChannels * 2;
+    [header appendBytes:&blockAlign length:2];
+    uint16_t bitsPerSample = 16;
+    [header appendBytes:&bitsPerSample length:2];
+    
+    // data 子块
+    [header appendBytes:"data" length:4];
+    uint32_t dataSize = (uint32_t)dataLength;
+    [header appendBytes:&dataSize length:4];
+    
+    return header;
+}
+
+- (void)processAudioData:(NSData *)data isLastChunk:(BOOL)isLastChunk {
+    NSLog(@"处理音频数据块，大小: %lu, 是否最后一块: %d", (unsigned long)data.length, isLastChunk);
+    
+    NSString *filePath = [self saveAudioChunk:data];
+    if (filePath) {
+        [self.audioChunks addObject:filePath];
+        NSLog(@"成功添加音频块到列表，当前块数: %lu", (unsigned long)self.audioChunks.count);
         
-        // 将 PCM 数据转换为 Float32 格式
-        NSMutableArray *floatData = [NSMutableArray array];
-        const int16_t *samples = (const int16_t *)processData.bytes;
-        NSInteger sampleCount = processData.length / sizeof(int16_t);
-        
-        for (NSInteger i = 0; i < sampleCount; i++) {
-            [floatData addObject:@(samples[i] / 32768.0f)];
+        // 如果是第一个块，开始播放
+        if (self.audioChunks.count == 1) {
+            [self playNextChunk];
         }
-        
-        // 创建音频缓冲区
-        AVAudioPCMBuffer *buffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:self.audioFormat
-                                                                frameCapacity:(AVAudioFrameCount)floatData.count];
-        buffer.frameLength = buffer.frameCapacity;
-        
-        // 填充音频数据
-        float *channelData = buffer.floatChannelData[0];
-        for (NSInteger i = 0; i < floatData.count; i++) {
-            channelData[i] = [floatData[i] floatValue];
-        }
-        
-        self.totalBuffers++;
-        
-        // 将缓冲区添加到播放队列
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.playerNode scheduleBuffer:buffer completionHandler:^{
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    self.completedBuffers++;
-                    NSLog(@"缓冲区播放完成: %ld/%ld", (long)self.completedBuffers, (long)self.totalBuffers);
-                    
-                    if (self.completedBuffers == self.totalBuffers && self.isProcessingLastChunk) {
-                        [self.playerNode stop];
-                        NSLog(@"所有音频播放完成");
-                        self.totalBuffers = 0;
-                        self.completedBuffers = 0;
-                    }
-                });
-            }];
-            
-            if (!self.playerNode.isPlaying) {
-                [self.playerNode play];
-                NSLog(@"开始播放音频");
-            }
-        });
+    } else {
+        NSLog(@"警告：音频块保存失败");
     }
 }
 
+- (void)playNextChunk {
+    if (self.currentPlayIndex >= self.audioChunks.count) {
+        NSLog(@"所有音频块播放完成");
+        self.currentPlayIndex = 0;
+        return;
+    }
+    
+    NSString *filePath = self.audioChunks[self.currentPlayIndex];
+    NSLog(@"播放音频块 %ld: %@", (long)self.currentPlayIndex, filePath);
+    
+    // 检查文件是否存在
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if (![fileManager fileExistsAtPath:filePath]) {
+        NSLog(@"错误：音频文件不存在: %@", filePath);
+        self.currentPlayIndex++;
+        return;
+    }
+    
+    // 检查文件大小
+    NSDictionary *attributes = [fileManager attributesOfItemAtPath:filePath error:nil];
+    NSNumber *fileSize = [attributes objectForKey:NSFileSize];
+    if ([fileSize unsignedLongLongValue] == 0) {
+        NSLog(@"错误：音频文件大小为0: %@", filePath);
+        self.currentPlayIndex++;
+        return;
+    }
+    
+    [[GJLDigitalManager manager] toSpeakWithPath:filePath];
+}
+
+- (void)handleSpeakingFinished {
+    NSLog(@"音频块 %ld 播放完成，准备播放下一个", (long)self.currentPlayIndex);
+    self.currentPlayIndex++;
+    [self playNextChunk];
+}
+
 - (void)stopPlayback {
-    [self.playerNode stop];
+    [self.playTimer invalidate];
+    self.playTimer = nil;
+    
     self.isStreaming = NO;
     [self.audioData setLength:0];
     self.isFirstChunk = YES;
-    self.isProcessingLastChunk = NO;
-    self.totalBuffers = 0;
-    self.completedBuffers = 0;
+    self.chunkIndex = 0;
+    self.currentPlayIndex = 0;
+    
+    // 清理临时文件
+    for (NSString *filePath in self.audioChunks) {
+        [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+    }
+    [self.audioChunks removeAllObjects];
 }
 
 #pragma mark - NSURLSessionDataDelegate
@@ -197,16 +255,39 @@
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.audioData.length > 0) {
-            self.isProcessingLastChunk = YES;
-            [self processAudioData:[NSData data] isLastChunk:YES];
-        }
-        self.isStreaming = NO;
-        
         if (error) {
             NSLog(@"音频流接收失败: %@", error);
         } else {
             NSLog(@"音频流接收完成");
+            
+            // 获取文档目录
+            NSString *documentsPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+            if (!documentsPath) {
+                NSLog(@"错误：无法获取文档目录");
+                return;
+            }
+            
+            NSString *finalFilePath = [documentsPath stringByAppendingPathComponent:@"final_audio.wav"];
+            NSLog(@"准备播放文件: %@", finalFilePath);
+            
+            // 验证文件是否存在
+            NSFileManager *fileManager = [NSFileManager defaultManager];
+            if (![fileManager fileExistsAtPath:finalFilePath]) {
+                NSLog(@"错误：音频文件不存在: %@", finalFilePath);
+                return;
+            }
+            
+            // 验证文件大小
+            NSDictionary *attributes = [fileManager attributesOfItemAtPath:finalFilePath error:nil];
+            NSNumber *fileSize = [attributes objectForKey:NSFileSize];
+            NSLog(@"音频文件大小: %@ 字节", fileSize);
+            
+            if ([fileSize unsignedLongLongValue] == 0) {
+                NSLog(@"错误：音频文件大小为0");
+                return;
+            }
+            
+            
         }
     });
 }

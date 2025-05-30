@@ -228,6 +228,9 @@ static GJLDigitalManager * manager = nil;
 //    [DigitalHumanDriven manager].wavframe=0;
 //    [[DigitalHumanDriven manager] free];
 //}
+-(void)toSpeakWithPath:(NSString*)path
+{
+}
 //-(void)onewavWithPath:(NSString*)wavPath
 //{
 //    
