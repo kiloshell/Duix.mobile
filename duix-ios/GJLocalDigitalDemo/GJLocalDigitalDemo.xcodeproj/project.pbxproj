@@ -37,7 +37,6 @@
 		FE29D3AA2DEDD44300266816 /* test_qwen.py in Resources */ = {isa = PBXBuildFile; fileRef = FE29D3A92DEDD44300266816 /* test_qwen.py */; };
 		FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */; };
 		FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9C2DE7570F006A9F8D /* ChatMessage.m */; };
-		FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA02DE7570F006A9F8D /* ChatViewController.m */; };
 		FED34FA62DE7571E006A9F8D /* BailianClient.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA52DE7571E006A9F8D /* BailianClient.m */; };
 		FED356DB2DE75851006A9F8D /* AudioUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = FED356DA2DE75851006A9F8D /* AudioUtil.m */; };
 		FED356DD2DE758DB006A9F8D /* test_tts.py in Resources */ = {isa = PBXBuildFile; fileRef = FED356DC2DE758DB006A9F8D /* test_tts.py */; };
@@ -121,8 +120,6 @@
 		FED34F9C2DE7570F006A9F8D /* ChatMessage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatMessage.m; sourceTree = "<group>"; };
 		FED34F9D2DE7570F006A9F8D /* ChatMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessageCell.h; sourceTree = "<group>"; };
 		FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatMessageCell.m; sourceTree = "<group>"; };
-		FED34F9F2DE7570F006A9F8D /* ChatViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatViewController.h; sourceTree = "<group>"; };
-		FED34FA02DE7570F006A9F8D /* ChatViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatViewController.m; sourceTree = "<group>"; };
 		FED34FA42DE7571E006A9F8D /* BailianClient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BailianClient.h; sourceTree = "<group>"; };
 		FED34FA52DE7571E006A9F8D /* BailianClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BailianClient.m; sourceTree = "<group>"; };
 		FED356D92DE75851006A9F8D /* AudioUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioUtil.h; sourceTree = "<group>"; };
@@ -270,8 +267,6 @@
 				FED34F9C2DE7570F006A9F8D /* ChatMessage.m */,
 				FED34F9D2DE7570F006A9F8D /* ChatMessageCell.h */,
 				FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */,
-				FED34F9F2DE7570F006A9F8D /* ChatViewController.h */,
-				FED34FA02DE7570F006A9F8D /* ChatViewController.m */,
 				FED34FA42DE7571E006A9F8D /* BailianClient.h */,
 				FED34FA52DE7571E006A9F8D /* BailianClient.m */,
 				FED356D92DE75851006A9F8D /* AudioUtil.h */,
@@ -451,7 +446,6 @@
 				FED34FA62DE7571E006A9F8D /* BailianClient.m in Sources */,
 				FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */,
 				FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */,
-				FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */,
 				FED356DB2DE75851006A9F8D /* AudioUtil.m in Sources */,
 				A0BB09402B3C34A700BF0CC1 /* GJLDigitalAnswerModel.m in Sources */,
 				A0FC3DA02B282F1B0069EA0E /* AppDelegate.m in Sources */,

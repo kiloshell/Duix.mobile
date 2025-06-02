@@ -55,27 +55,29 @@
 - (void)convertTextToSpeech:(NSString *)text completion:(void(^)(BOOL success, NSError *error))completion {
     // 准备请求参数
     NSDictionary *params = @{
-        @"appkey": @"w2Yuyzd5ZrxSOeo7",
-        @"text": text,
-        @"token": @"00ce4ec1365b4891b13554a58f470b1b",
-        @"format": @"wav"
+        @"tex": text,
+        @"lan": @"zh",
+        @"cuid": [[[UIDevice currentDevice] identifierForVendor] UUIDString],
+        @"ctp": @"1",
+        @"aue": @"6",  // 改为 WAV 格式
+        @"tok": @"24.723736c17f0e14c09531ee64c0099896.2592000.1751463918.282335-119104789",
+        @"audio_ctrl": @"{\"sampling_rate\":16000}"
     };
     
-    NSURL *url = [NSURL URLWithString:@"https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/tts"];
+    NSURL *url = [NSURL URLWithString:@"https://tsn.baidu.com/text2audio"];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    [request setValue:@"00ce4ec1365b4891b13554a58f470b1b" forHTTPHeaderField:@"X-NLS-Token"];
+    [request setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
     
-    NSError *error;
-    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:params options:0 error:&error];
-    
-    if (error) {
-        if (completion) {
-            completion(NO, error);
+    // 构建请求体
+    NSMutableString *bodyString = [NSMutableString string];
+    [params enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
+        if (bodyString.length > 0) {
+            [bodyString appendString:@"&"];
         }
-        return;
-    }
+        [bodyString appendFormat:@"%@=%@", key, [value stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]];
+    }];
+    request.HTTPBody = [bodyString dataUsingEncoding:NSUTF8StringEncoding];
     
     // 在后台线程执行网络请求
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -95,30 +97,33 @@
             }
             
             NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-            if (httpResponse.statusCode != 200) {
+            NSString *contentType = httpResponse.allHeaderFields[@"Content-Type"];
+            
+            // 判断是否返回音频
+            if ([contentType hasPrefix:@"audio/"]) {
+                // 保存音频文件
+                NSString *filePath = [self saveAudioFile:responseData];
+                if (filePath) {
+                    self.currentAudioFilePath = filePath;
+                    [[GJLDigitalManager manager] toSpeakWithPath:filePath];
+                    if (completion) {
+                        completion(YES, nil);
+                    }
+                } else {
+                    NSError *error = [NSError errorWithDomain:@"AudioUtil"
+                                                       code:-1
+                                                   userInfo:@{NSLocalizedDescriptionKey: @"音频文件保存失败"}];
+                    if (completion) {
+                        completion(NO, error);
+                    }
+                }
+            } else {
+                // 返回错误信息
                 NSString *errorMessage = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
                 NSLog(@"服务器返回错误: %@", errorMessage);
                 NSError *error = [NSError errorWithDomain:@"AudioUtil"
                                                    code:httpResponse.statusCode
                                                userInfo:@{NSLocalizedDescriptionKey: errorMessage}];
-                if (completion) {
-                    completion(NO, error);
-                }
-                return;
-            }
-            
-            // 保存音频文件
-            NSString *filePath = [self saveAudioFile:responseData];
-            if (filePath) {
-                self.currentAudioFilePath = filePath;
-                [[GJLDigitalManager manager] toSpeakWithPath:filePath];
-                if (completion) {
-                    completion(YES, nil);
-                }
-            } else {
-                NSError *error = [NSError errorWithDomain:@"AudioUtil"
-                                                   code:-1
-                                               userInfo:@{NSLocalizedDescriptionKey: @"音频文件保存失败"}];
                 if (completion) {
                     completion(NO, error);
                 }
@@ -135,12 +140,9 @@
     
     NSLog(@"保存音频文件到: %@, 大小: %lu", filePath, (unsigned long)data.length);
     
-    NSMutableData *wavData = [NSMutableData data];
-    [wavData appendData:[self createWavHeaderWithDataLength:data.length]];
-    [wavData appendData:data];
-    
+    // 直接保存原始数据，因为已经是 WAV 格式
     NSError *error;
-    BOOL success = [wavData writeToFile:filePath options:NSDataWritingAtomic error:&error];
+    BOOL success = [data writeToFile:filePath options:NSDataWritingAtomic error:&error];
     if (!success) {
         NSLog(@"保存音频文件失败: %@", error);
         return nil;

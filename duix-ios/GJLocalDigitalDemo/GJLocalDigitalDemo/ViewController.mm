@@ -35,7 +35,7 @@
 #define DIGITALMODELURL @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/bendi3_20240518.zip"
 
 
-@interface ViewController ()<GJDownWavToolDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate>
+@interface ViewController ()<GJDownWavToolDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate, NSURLSessionDataDelegate>
 @property(nonatomic,strong)UIView *showView;
 @property(nonatomic,strong)NSString * basePath;
 @property(nonatomic,strong)NSString * digitalPath;
@@ -82,6 +82,12 @@
 @property (nonatomic, strong) UIView *chatInputContainerView;
 @property (nonatomic, strong) NSMutableArray<ChatMessage *> *chatMessages;
 @property (nonatomic, strong) UIButton *closeChatButton;
+@property (nonatomic, strong) ChatMessage *currentStreamingMessage;
+@property (nonatomic, strong) NSMutableString *streamingBuffer;
+@property (nonatomic, strong) NSMutableString *displayBuffer;
+@property (nonatomic, strong) NSURLSession *session;
+@property (nonatomic, strong) NSTimer *typingTimer;
+@property (nonatomic, strong) NSMutableData *responseData;
 
 @end
 
@@ -188,6 +194,12 @@
 //
 //    // 设置按钮位置
 //    self.chatButton.frame = CGRectMake(self.view.bounds.size.width - 80, 40, 60, 40);
+
+    // 初始化流式处理相关的属性
+    self.streamingBuffer = [NSMutableString string];
+    self.displayBuffer = [NSMutableString string];
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    self.session = [NSURLSession sessionWithConfiguration:config];
 }
 -(void)initALL
 {
@@ -568,28 +580,134 @@
 - (void)getAnswerForMessage:(NSString *)message {
     [SVProgressHUD showWithStatus:@"正在思考..."];
     
-    [[QianwenClient sharedInstance] chatWithMessage:message completion:^(NSString *response, NSError *error) {
+    // 创建并添加助手消息
+    ChatMessage *assistantMessage = [ChatMessage messageWithContent:@"" type:ChatMessageTypeAssistant];
+    [self.chatMessages addObject:assistantMessage];
+    self.currentStreamingMessage = assistantMessage;
+    [self.chatTableView reloadData];
+    [self scrollChatToBottom];
+    
+    // 准备请求参数
+    NSDictionary *params = @{
+        @"model": @"qwen2.5-0.5b-instruct",
+        @"messages": @[
+            @{@"role": @"system", @"content": @"You are a helpful assistant."},
+            @{@"role": @"user", @"content": message}
+        ],
+        @"stream": @YES
+    };
+    
+    NSURL *url = [NSURL URLWithString:@"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.HTTPMethod = @"POST";
+    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    [request setValue:@"Bearer sk-b590c8399ade4b6d9af342d091fb3869" forHTTPHeaderField:@"Authorization"];
+    
+    NSError *error;
+    request.HTTPBody = [NSJSONSerialization dataWithJSONObject:params options:0 error:&error];
+    
+    if (error) {
+        [SVProgressHUD dismiss];
+        [SVProgressHUD showErrorWithStatus:@"请求参数序列化失败"];
+        return;
+    }
+    
+    self.responseData = [NSMutableData data];
+    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request];
+    task.delegate = self;
+    [task resume];
+}
+
+#pragma mark - NSURLSessionDataDelegate
+
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data {
+    [self.responseData appendData:data];
+    
+    // 收到第一个数据时关闭 loading
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [SVProgressHUD dismiss];
+        });
+    });
+    
+    NSString *responseString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    NSArray *lines = [responseString componentsSeparatedByString:@"\n"];
+    
+    for (NSString *line in lines) {
+        if ([line hasPrefix:@"data: "]) {
+            NSString *jsonStr = [line substringFromIndex:6];
+            if ([jsonStr isEqualToString:@"[DONE]"]) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self finishStreaming];
+                });
+                break;
+            }
+            
+            NSData *jsonData = [jsonStr dataUsingEncoding:NSUTF8StringEncoding];
+            NSDictionary *json = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:nil];
+            
+            NSString *content = json[@"choices"][0][@"delta"][@"content"];
+            if (content) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self appendStreamingContent:content];
+                });
+            }
+        }
+    }
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    dispatch_async(dispatch_get_main_queue(), ^{
         [SVProgressHUD dismiss];
         
         if (error) {
             [SVProgressHUD showErrorWithStatus:error.localizedDescription];
             return;
         }
+    });
+}
+
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(NSURLSessionResponseDisposition))completionHandler {
+    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+    if (httpResponse.statusCode != 200) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [SVProgressHUD dismiss];
+            [SVProgressHUD showErrorWithStatus:[NSString stringWithFormat:@"服务器返回错误: %ld", (long)httpResponse.statusCode]];
+        });
+        completionHandler(NSURLSessionResponseCancel);
+        return;
+    }
+    completionHandler(NSURLSessionResponseAllow);
+}
+
+- (void)appendStreamingContent:(NSString *)content {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSLog(@"接收到的文字：%@", content);
+        [self.streamingBuffer appendString:content];
+        self.currentStreamingMessage.content = [self.streamingBuffer copy];
         
-        if (response) {
-            ChatMessage *assistantMessage = [ChatMessage messageWithContent:response type:ChatMessageTypeAssistant];
-            [self.chatMessages addObject:assistantMessage];
-            [self.chatTableView reloadData];
-            [self scrollChatToBottom];
-            
-            // 将回答转换为语音并播放
-            [[AudioUtil sharedInstance] convertTextToSpeech:response completion:^(BOOL success, NSError *error) {
+        // 立即更新显示
+        [self.chatTableView reloadData];
+        [self scrollChatToBottom];
+    });
+}
+
+- (void)finishStreaming {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // 回答结束后，将完整的回答转换为语音
+        if (self.streamingBuffer.length > 0) {
+            NSString *completeAnswer = [self.streamingBuffer copy];
+            [[AudioUtil sharedInstance] convertTextToSpeech:completeAnswer completion:^(BOOL success, NSError *error) {
                 if (!success) {
                     NSLog(@"音频转换失败: %@", error);
                 }
             }];
         }
-    }];
+        
+        self.currentStreamingMessage = nil;
+        [self.streamingBuffer setString:@""];
+    });
 }
 
 - (void)scrollChatToBottom {
