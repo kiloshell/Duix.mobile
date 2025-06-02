@@ -84,11 +84,12 @@
 @property (nonatomic, strong) UIButton *closeChatButton;
 @property (nonatomic, strong) ChatMessage *currentStreamingMessage;
 @property (nonatomic, strong) NSMutableString *streamingBuffer;
-@property (nonatomic, strong) NSMutableString *displayBuffer;
+@property (nonatomic, strong) NSMutableString *sentenceBuffer;
 @property (nonatomic, strong) NSURLSession *session;
 @property (nonatomic, strong) NSTimer *typingTimer;
 @property (nonatomic, strong) NSMutableData *responseData;
-
+@property (nonatomic, strong) NSMutableArray *ttsQueue;
+@property (nonatomic, assign) BOOL isPlayingTTS;
 @end
 
 @implementation ViewController
@@ -197,10 +198,46 @@
 
     // 初始化流式处理相关的属性
     self.streamingBuffer = [NSMutableString string];
-    self.displayBuffer = [NSMutableString string];
+    self.sentenceBuffer = [NSMutableString string];
+    self.ttsQueue = [NSMutableArray array];
+    self.isPlayingTTS = NO;
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
     self.session = [NSURLSession sessionWithConfiguration:config];
+    
+    // 注册通知
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(handleSpeakingFinished)
+                                               name:@"GJLDigitalManagerDidFinishSpeaking"
+                                             object:nil];
 }
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)handleSpeakingFinished {
+    self.isPlayingTTS = NO;
+    [self playNextTTS];
+}
+
+- (void)playNextTTS {
+    if (self.isPlayingTTS || self.ttsQueue.count == 0) {
+        return;
+    }
+    
+    NSString *nextSentence = self.ttsQueue.firstObject;
+    [self.ttsQueue removeObjectAtIndex:0];
+    
+    self.isPlayingTTS = YES;
+    [[AudioUtil sharedInstance] convertTextToSpeech:nextSentence completion:^(BOOL success, NSError *error) {
+        if (!success) {
+            NSLog(@"音频转换失败: %@", error);
+            self.isPlayingTTS = NO;
+            [self playNextTTS];
+        }
+    }];
+}
+
 -(void)initALL
 {
     //注意有网络是初始化ASR
@@ -681,13 +718,48 @@
     completionHandler(NSURLSessionResponseAllow);
 }
 
+- (BOOL)isCompleteSentence:(NSString *)text {
+    // 检查是否包含句子结束符号
+    NSCharacterSet *sentenceEndings = [NSCharacterSet characterSetWithCharactersInString:@"。！？.!?"];
+    NSRange range = [text rangeOfCharacterFromSet:sentenceEndings];
+    return range.location != NSNotFound;
+}
+
+- (NSString *)extractCompleteSentence:(NSString *)text {
+    NSCharacterSet *sentenceEndings = [NSCharacterSet characterSetWithCharactersInString:@"。！？.!?"];
+    NSRange range = [text rangeOfCharacterFromSet:sentenceEndings];
+    
+    if (range.location != NSNotFound) {
+        // 找到标点符号，返回标点符号及其之前的内容
+        NSRange sentenceRange = NSMakeRange(0, range.location + 1);
+        NSString *sentence = [text substringWithRange:sentenceRange];
+        
+        // 将剩余内容放回 sentenceBuffer
+        NSString *remainingText = [text substringFromIndex:range.location + 1];
+        [self.sentenceBuffer setString:remainingText];
+        
+        return sentence;
+    }
+    
+    return nil;
+}
+
 - (void)appendStreamingContent:(NSString *)content {
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSLog(@"接收到的文字：%@", content);
         [self.streamingBuffer appendString:content];
+        [self.sentenceBuffer appendString:content];
         self.currentStreamingMessage.content = [self.streamingBuffer copy];
         
-        // 立即更新显示
+        // 尝试提取完整句子
+        NSString *sentence = [self extractCompleteSentence:self.sentenceBuffer];
+        if (sentence) {
+            NSLog(@"新生成的句子：%@", sentence);
+            // 将句子添加到 TTS 队列
+            [self.ttsQueue addObject:sentence];
+            [self playNextTTS];
+        }
+        
+        // 更新界面显示
         [self.chatTableView reloadData];
         [self scrollChatToBottom];
     });
@@ -695,14 +767,14 @@
 
 - (void)finishStreaming {
     dispatch_async(dispatch_get_main_queue(), ^{
-        // 回答结束后，将完整的回答转换为语音
-        if (self.streamingBuffer.length > 0) {
-            NSString *completeAnswer = [self.streamingBuffer copy];
-            [[AudioUtil sharedInstance] convertTextToSpeech:completeAnswer completion:^(BOOL success, NSError *error) {
-                if (!success) {
-                    NSLog(@"音频转换失败: %@", error);
-                }
-            }];
+        // 处理剩余的文本
+        if (self.sentenceBuffer.length > 0) {
+            NSString *remainingText = [self.sentenceBuffer copy];
+            [self.sentenceBuffer setString:@""];
+            
+            // 将剩余文本添加到 TTS 队列
+            [self.ttsQueue addObject:remainingText];
+            [self playNextTTS];
         }
         
         self.currentStreamingMessage = nil;
