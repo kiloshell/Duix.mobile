@@ -34,6 +34,7 @@
 		A0FC3DAB2B282F1D0069EA0E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0FC3DAA2B282F1D0069EA0E /* Assets.xcassets */; };
 		A0FC3DAE2B282F1D0069EA0E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A0FC3DAC2B282F1D0069EA0E /* LaunchScreen.storyboard */; };
 		A0FC3DB12B282F1D0069EA0E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A0FC3DB02B282F1D0069EA0E /* main.m */; };
+		FE29D3AA2DEDD44300266816 /* test_qwen.py in Resources */ = {isa = PBXBuildFile; fileRef = FE29D3A92DEDD44300266816 /* test_qwen.py */; };
 		FED34FA12DE7570F006A9F8D /* ChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9E2DE7570F006A9F8D /* ChatMessageCell.m */; };
 		FED34FA22DE7570F006A9F8D /* ChatMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34F9C2DE7570F006A9F8D /* ChatMessage.m */; };
 		FED34FA32DE7570F006A9F8D /* ChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FED34FA02DE7570F006A9F8D /* ChatViewController.m */; };
@@ -115,6 +116,7 @@
 		A0FC3EAE2B2855AC0069EA0E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		CC0F95EC41CD11CE487F313E /* Pods-GJLocalDigitalDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GJLocalDigitalDemo.release.xcconfig"; path = "Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo.release.xcconfig"; sourceTree = "<group>"; };
 		CDE763B79F6CA6E21DE1F3CE /* Pods-GJLocalDigitalDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-GJLocalDigitalDemo.debug.xcconfig"; path = "Target Support Files/Pods-GJLocalDigitalDemo/Pods-GJLocalDigitalDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		FE29D3A92DEDD44300266816 /* test_qwen.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_qwen.py; sourceTree = "<group>"; };
 		FED34F9B2DE7570F006A9F8D /* ChatMessage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessage.h; sourceTree = "<group>"; };
 		FED34F9C2DE7570F006A9F8D /* ChatMessage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatMessage.m; sourceTree = "<group>"; };
 		FED34F9D2DE7570F006A9F8D /* ChatMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatMessageCell.h; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 				FED356D92DE75851006A9F8D /* AudioUtil.h */,
 				FED356DA2DE75851006A9F8D /* AudioUtil.m */,
 				FED356DC2DE758DB006A9F8D /* test_tts.py */,
+				FE29D3A92DEDD44300266816 /* test_qwen.py */,
 			);
 			path = GJLocalDigitalDemo;
 			sourceTree = "<group>";
@@ -388,6 +391,7 @@
 				A0F908C42B32E97500962346 /* 3.wav in Resources */,
 				FED356DD2DE758DB006A9F8D /* test_tts.py in Resources */,
 				A0F908C32B32E97500962346 /* 2.wav in Resources */,
+				FE29D3AA2DEDD44300266816 /* test_qwen.py in Resources */,
 				A0FC3DAB2B282F1D0069EA0E /* Assets.xcassets in Resources */,
 				A0FC3DA92B282F1B0069EA0E /* Main.storyboard in Resources */,
 			);

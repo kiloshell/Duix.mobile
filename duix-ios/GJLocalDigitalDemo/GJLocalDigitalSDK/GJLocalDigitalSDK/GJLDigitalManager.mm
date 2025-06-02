@@ -568,6 +568,8 @@ static GJLDigitalManager * manager = nil;
             if(strongSelf.isPlay)
             {
                 NSLog(@"播放结束:%@",weakSelf.auidoPlayView.urlstr);
+                // 发送播放完成通知
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"GJLDigitalManagerDidFinishSpeaking" object:nil];
                 [strongSelf toPlayAudioEnd];
             }
             
@@ -619,8 +621,7 @@ static GJLDigitalManager * manager = nil;
         self.audioPlayEnd();
     }
     
-    // 发送播放完成通知
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"GJLDigitalManagerDidFinishSpeaking" object:nil];
+    
 }
 
 -(void)toStart:(void (^) (BOOL isSuccess, NSString *errorMsg))block

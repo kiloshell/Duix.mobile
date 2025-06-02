@@ -390,24 +390,20 @@
     __weak typeof(self)weakSelf = self;
     //授权
     self.isStop=NO;
-//    [GJLDigitalManager manager].modeType=2;
-//    [GJLDigitalManager manager].backType=1;
+    // 设置背景透明，去除水印
+    [GJLDigitalManager manager].backType = 0;
  
-           NSInteger result=   [[GJLDigitalManager manager] initBaseModel:weakSelf.basePath digitalModel:self.digitalPath showView:weakSelf.showView];
-            if(result==1)
+    NSInteger result = [[GJLDigitalManager manager] initBaseModel:weakSelf.basePath digitalModel:self.digitalPath showView:weakSelf.showView];
+    if(result==1)
+    {
+        //开始
+        [[GJLDigitalManager manager] toStart:^(BOOL isSuccess, NSString *errorMsg) {
+            if(!isSuccess)
             {
-               //开始
-//                NSString *bgpath =[NSString stringWithFormat:@"%@/%@",[[NSBundle mainBundle] bundlePath],@"bg2.jpg"];
-//                [[GJLDigitalManager manager] toChangeBBGWithPath:bgpath];
-                [[GJLDigitalManager manager] toStart:^(BOOL isSuccess, NSString *errorMsg) {
-                    if(!isSuccess)
-                    {
-                        [SVProgressHUD showInfoWithStatus:errorMsg];
-                    }
-                }];
+                [SVProgressHUD showInfoWithStatus:errorMsg];
             }
-   
-  
+        }];
+    }
 }
 
 

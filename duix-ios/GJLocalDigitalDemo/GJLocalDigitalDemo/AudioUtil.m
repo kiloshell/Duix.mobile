@@ -10,19 +10,10 @@
 #import <GJLocalDigitalSDK/GJLDigitalManager.h>
 @interface AudioUtil () <NSURLSessionDataDelegate>
 
-@property (nonatomic, strong) NSURLSession *session;
-@property (nonatomic, strong) NSMutableData *audioData;
-@property (nonatomic, strong) dispatch_queue_t audioQueue;
-@property (nonatomic, assign) BOOL isPlaying;
 @property (nonatomic, strong) AVAudioFormat *audioFormat;
-@property (nonatomic, assign) BOOL isStreaming;
-@property (nonatomic, assign) BOOL isFirstChunk;
+@property (nonatomic, assign) BOOL isPlaying;
 @property (nonatomic, assign) NSInteger wavHeaderSize;
-@property (nonatomic, strong) NSMutableArray *audioChunks;
 @property (nonatomic, strong) NSString *currentAudioFilePath;
-@property (nonatomic, assign) NSInteger chunkIndex;
-@property (nonatomic, assign) NSInteger currentPlayIndex;
-@property (nonatomic, strong) NSTimer *playTimer;
 
 @end
 
@@ -40,13 +31,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self.audioData = [NSMutableData data];
-        self.audioQueue = dispatch_queue_create("com.audio.streaming", DISPATCH_QUEUE_SERIAL);
-        self.isFirstChunk = YES;
         self.wavHeaderSize = 44;
-        self.audioChunks = [NSMutableArray array];
-        self.chunkIndex = 0;
-        self.currentPlayIndex = 0;
         
         // 注册通知
         [[NSNotificationCenter defaultCenter] addObserver:self
@@ -59,27 +44,15 @@
                                                            sampleRate:16000
                                                              channels:1
                                                           interleaved:NO];
-        
-        // 设置 URLSession
-        NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-        self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
     }
     return self;
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [self.playTimer invalidate];
-    self.playTimer = nil;
 }
 
 - (void)convertTextToSpeech:(NSString *)text completion:(void(^)(BOOL success, NSError *error))completion {
-    if (self.isStreaming) return;
-    
-    self.isStreaming = YES;
-    [self.audioData setLength:0];
-    self.isFirstChunk = YES;
-    
     // 准备请求参数
     NSDictionary *params = @{
         @"appkey": @"w2Yuyzd5ZrxSOeo7",
@@ -104,40 +77,74 @@
         return;
     }
     
-    NSURLSessionDataTask *task = [self.session dataTaskWithRequest:request];
-    [task resume];
+    // 在后台线程执行网络请求
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSURLResponse *response = nil;
+        NSError *requestError = nil;
+        NSData *responseData = [NSURLConnection sendSynchronousRequest:request
+                                                   returningResponse:&response
+                                                               error:&requestError];
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (requestError) {
+                NSLog(@"音频请求失败: %@", requestError);
+                if (completion) {
+                    completion(NO, requestError);
+                }
+                return;
+            }
+            
+            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+            if (httpResponse.statusCode != 200) {
+                NSString *errorMessage = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+                NSLog(@"服务器返回错误: %@", errorMessage);
+                NSError *error = [NSError errorWithDomain:@"AudioUtil"
+                                                   code:httpResponse.statusCode
+                                               userInfo:@{NSLocalizedDescriptionKey: errorMessage}];
+                if (completion) {
+                    completion(NO, error);
+                }
+                return;
+            }
+            
+            // 保存音频文件
+            NSString *filePath = [self saveAudioFile:responseData];
+            if (filePath) {
+                self.currentAudioFilePath = filePath;
+                [[GJLDigitalManager manager] toSpeakWithPath:filePath];
+                if (completion) {
+                    completion(YES, nil);
+                }
+            } else {
+                NSError *error = [NSError errorWithDomain:@"AudioUtil"
+                                                   code:-1
+                                               userInfo:@{NSLocalizedDescriptionKey: @"音频文件保存失败"}];
+                if (completion) {
+                    completion(NO, error);
+                }
+            }
+        });
+    });
 }
 
-- (NSString *)saveAudioChunk:(NSData *)data {
+- (NSString *)saveAudioFile:(NSData *)data {
     NSString *documentsPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *fileName = [NSString stringWithFormat:@"audio_chunk_%ld.wav", (long)self.chunkIndex++];
+    NSString *timestamp = [NSString stringWithFormat:@"%ld", (long)[[NSDate date] timeIntervalSince1970]];
+    NSString *fileName = [NSString stringWithFormat:@"audio_%@.wav", timestamp];
     NSString *filePath = [documentsPath stringByAppendingPathComponent:fileName];
     
-    NSLog(@"保存音频块到: %@, 大小: %lu", filePath, (unsigned long)data.length);
+    NSLog(@"保存音频文件到: %@, 大小: %lu", filePath, (unsigned long)data.length);
     
     NSMutableData *wavData = [NSMutableData data];
-    
-    // 为每个块添加 WAV 头
     [wavData appendData:[self createWavHeaderWithDataLength:data.length]];
     [wavData appendData:data];
     
     NSError *error;
     BOOL success = [wavData writeToFile:filePath options:NSDataWritingAtomic error:&error];
     if (!success) {
-        NSLog(@"保存音频块失败: %@", error);
+        NSLog(@"保存音频文件失败: %@", error);
         return nil;
     }
-    
-    // 验证文件是否保存成功
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:filePath]) {
-        NSLog(@"错误：音频块文件未成功保存: %@", filePath);
-        return nil;
-    }
-    
-    NSDictionary *attributes = [fileManager attributesOfItemAtPath:filePath error:nil];
-    NSNumber *fileSize = [attributes objectForKey:NSFileSize];
-    NSLog(@"音频块保存成功，大小: %@ 字节", fileSize);
     
     return filePath;
 }
@@ -176,120 +183,16 @@
     return header;
 }
 
-- (void)processAudioData:(NSData *)data isLastChunk:(BOOL)isLastChunk {
-    NSLog(@"处理音频数据块，大小: %lu, 是否最后一块: %d", (unsigned long)data.length, isLastChunk);
-    
-    NSString *filePath = [self saveAudioChunk:data];
-    if (filePath) {
-        [self.audioChunks addObject:filePath];
-        NSLog(@"成功添加音频块到列表，当前块数: %lu", (unsigned long)self.audioChunks.count);
-        
-        // 如果是第一个块，开始播放
-        if (self.audioChunks.count == 1) {
-            [self playNextChunk];
-        }
-    } else {
-        NSLog(@"警告：音频块保存失败");
-    }
-}
-
-- (void)playNextChunk {
-    if (self.currentPlayIndex >= self.audioChunks.count) {
-        NSLog(@"所有音频块播放完成");
-        self.currentPlayIndex = 0;
-        return;
-    }
-    
-    NSString *filePath = self.audioChunks[self.currentPlayIndex];
-    NSLog(@"播放音频块 %ld: %@", (long)self.currentPlayIndex, filePath);
-    
-    // 检查文件是否存在
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:filePath]) {
-        NSLog(@"错误：音频文件不存在: %@", filePath);
-        self.currentPlayIndex++;
-        return;
-    }
-    
-    // 检查文件大小
-    NSDictionary *attributes = [fileManager attributesOfItemAtPath:filePath error:nil];
-    NSNumber *fileSize = [attributes objectForKey:NSFileSize];
-    if ([fileSize unsignedLongLongValue] == 0) {
-        NSLog(@"错误：音频文件大小为0: %@", filePath);
-        self.currentPlayIndex++;
-        return;
-    }
-    
-    [[GJLDigitalManager manager] toSpeakWithPath:filePath];
-}
-
 - (void)handleSpeakingFinished {
-    NSLog(@"音频块 %ld 播放完成，准备播放下一个", (long)self.currentPlayIndex);
-    self.currentPlayIndex++;
-    [self playNextChunk];
+    NSLog(@"音频播放完成");
 }
 
 - (void)stopPlayback {
-    [self.playTimer invalidate];
-    self.playTimer = nil;
-    
-    self.isStreaming = NO;
-    [self.audioData setLength:0];
-    self.isFirstChunk = YES;
-    self.chunkIndex = 0;
-    self.currentPlayIndex = 0;
-    
-    // 清理临时文件
-    for (NSString *filePath in self.audioChunks) {
-        [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+    // 清理当前音频文件
+    if (self.currentAudioFilePath) {
+        [[NSFileManager defaultManager] removeItemAtPath:self.currentAudioFilePath error:nil];
+        self.currentAudioFilePath = nil;
     }
-    [self.audioChunks removeAllObjects];
-}
-
-#pragma mark - NSURLSessionDataDelegate
-
-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data {
-    NSLog(@"接收到音频数据块: %lu 字节", (unsigned long)data.length);
-    [self processAudioData:data isLastChunk:NO];
-}
-
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (error) {
-            NSLog(@"音频流接收失败: %@", error);
-        } else {
-            NSLog(@"音频流接收完成");
-            
-            // 获取文档目录
-            NSString *documentsPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-            if (!documentsPath) {
-                NSLog(@"错误：无法获取文档目录");
-                return;
-            }
-            
-            NSString *finalFilePath = [documentsPath stringByAppendingPathComponent:@"final_audio.wav"];
-            NSLog(@"准备播放文件: %@", finalFilePath);
-            
-            // 验证文件是否存在
-            NSFileManager *fileManager = [NSFileManager defaultManager];
-            if (![fileManager fileExistsAtPath:finalFilePath]) {
-                NSLog(@"错误：音频文件不存在: %@", finalFilePath);
-                return;
-            }
-            
-            // 验证文件大小
-            NSDictionary *attributes = [fileManager attributesOfItemAtPath:finalFilePath error:nil];
-            NSNumber *fileSize = [attributes objectForKey:NSFileSize];
-            NSLog(@"音频文件大小: %@ 字节", fileSize);
-            
-            if ([fileSize unsignedLongLongValue] == 0) {
-                NSLog(@"错误：音频文件大小为0");
-                return;
-            }
-            
-            
-        }
-    });
 }
 
 @end
