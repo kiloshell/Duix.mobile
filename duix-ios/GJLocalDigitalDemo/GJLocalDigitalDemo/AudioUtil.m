@@ -13,7 +13,7 @@
 @property (nonatomic, strong) AVAudioFormat *audioFormat;
 @property (nonatomic, assign) BOOL isPlaying;
 @property (nonatomic, assign) NSInteger wavHeaderSize;
-@property (nonatomic, strong) NSString *currentAudioFilePath;
+@property (nonatomic, strong, readwrite) NSString *currentAudioFilePath;
 
 @end
 
@@ -105,7 +105,6 @@
                 NSString *filePath = [self saveAudioFile:responseData];
                 if (filePath) {
                     self.currentAudioFilePath = filePath;
-                    [[GJLDigitalManager manager] toSpeakWithPath:filePath];
                     if (completion) {
                         completion(YES, nil);
                     }

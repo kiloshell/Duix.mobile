@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AudioUtil : NSObject
 
+@property (nonatomic, strong, readonly) NSString *currentAudioFilePath;
+
 + (instancetype)sharedInstance;
 
 // 将文本转换为音频并播放
