@@ -41,6 +41,13 @@
 @property(nonatomic,strong)NSString * digitalPath;
 @property (nonatomic, assign) BOOL isRequest;
 
+// 数字人选择相关
+@property (nonatomic, strong) UIButton *digitalHumanButton;
+@property (nonatomic, strong) UIView *digitalHumanMenuView;
+@property (nonatomic, strong) NSArray *femaleDigitalHumans;
+@property (nonatomic, strong) NSArray *maleDigitalHumans;
+@property (nonatomic, strong) NSString *currentDigitalHumanName;
+@property (nonatomic, strong) NSString *currentDigitalHumanURL;
 
 //答案数组
 @property (nonatomic, strong) NSMutableArray *answerArr;
@@ -124,6 +131,116 @@
     [self.view addSubview:self.showView];
     [self.view addSubview:self.questionLabel];
     [self.view addSubview:self.answerLabel];
+    
+    // 初始化数字人列表
+    self.femaleDigitalHumans = @[
+        @{@"name": @"Hazel", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/674402003804229_f6e86fb375c4f1f1b82b24f7ee4e7cb4_optim_m80.zip"},
+        @{@"name": @"Luna", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/674393494597701_f49fcf68f5afdb241d516db8a7d88a7b_optim_m80.zip"},
+        @{@"name": @"lvy", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/674397294927941_6e297e18a4bdbe35c07a6ae48a1f021f_optim_m80.zip"},
+        @{@"name": @"Aurora", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/674400178376773_3925e756433c5a9caa9b9d54147ae4ab_optim_m80.zip"}
+    ];
+    
+    self.maleDigitalHumans = @[
+        @{@"name":@"Basic",@"url":@"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/bendi3_20240518.zip"},
+        @{@"name": @"William", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/627306542239813_1871244b5e6912efc636ba31ea4c5c6d_optim_m80.zip"},
+        @{@"name": @"andrew", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/651705983152197_ccf3256b2449c76e77f94276dffcb293_optim_m80.zip"},
+        @{@"name": @"Michael", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/675429759852613_7f8d9388a4213080b1820b83dd057cfb_optim_m80.zip"},
+        @{@"name": @"Eric", @"url": @"https://github.com/GuijiAI/duix.ai/releases/download/v1.0.0/airuike_20240409.zip"}
+    ];
+    
+    // 设置默认数字人
+    self.currentDigitalHumanName = self.femaleDigitalHumans[0][@"name"];
+    self.currentDigitalHumanURL = self.femaleDigitalHumans[0][@"url"];
+    
+    // 创建数字人选择按钮
+    self.digitalHumanButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [self.digitalHumanButton setTitle:@"切换数字人" forState:UIControlStateNormal];
+    [self.digitalHumanButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    self.digitalHumanButton.backgroundColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0];
+    self.digitalHumanButton.layer.cornerRadius = 5;
+    [self.digitalHumanButton addTarget:self action:@selector(toggleDigitalHumanMenu) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.digitalHumanButton];
+    
+    // 设置按钮位置 - 移动到页面正上方
+    CGFloat buttonWidth = 120;
+    CGFloat buttonHeight = 40;
+    CGFloat topMargin = 120; // 距离顶部的距离
+    self.digitalHumanButton.frame = CGRectMake((self.view.frame.size.width - buttonWidth) / 2, topMargin, buttonWidth, buttonHeight);
+    
+    // 创建下拉菜单视图
+    self.digitalHumanMenuView = [[UIView alloc] init];
+    self.digitalHumanMenuView.backgroundColor = [UIColor colorWithWhite:0.9 alpha:0.95];
+    self.digitalHumanMenuView.layer.cornerRadius = 5;
+    self.digitalHumanMenuView.hidden = YES;
+    [self.view addSubview:self.digitalHumanMenuView];
+    
+    // 菜单宽高
+    CGFloat menuWidth = 220;
+    CGFloat menuHeight = 350; // 固定高度
+    self.digitalHumanMenuView.frame = CGRectMake((self.view.frame.size.width - menuWidth) / 2, topMargin + buttonHeight + 5, menuWidth, menuHeight);
+    
+    // 创建scrollView
+    UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, menuWidth, menuHeight)];
+    scrollView.showsVerticalScrollIndicator = YES;
+    [self.digitalHumanMenuView addSubview:scrollView];
+    
+    CGFloat y = 15;
+    
+    // 女性数字人标签
+    UILabel *femaleLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, y, menuWidth-30, 20)];
+    femaleLabel.text = @"女性数字人";
+    femaleLabel.font = [UIFont boldSystemFontOfSize:14];
+    [scrollView addSubview:femaleLabel];
+    y += 25;
+    
+//    CGFloat buttonHeight = 36;
+    CGFloat spacing = 10;
+    
+    // 女性数字人按钮
+    for (NSInteger i = 0; i < self.femaleDigitalHumans.count; i++) {
+        NSDictionary *digitalHuman = self.femaleDigitalHumans[i];
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        button.frame = CGRectMake(15, y, menuWidth-30, buttonHeight);
+        [button setTitle:digitalHuman[@"name"] forState:UIControlStateNormal];
+        [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+        button.backgroundColor = [UIColor whiteColor];
+        button.layer.cornerRadius = 3;
+        button.tag = i;
+        [button addTarget:self action:@selector(selectFemaleDigitalHuman:) forControlEvents:UIControlEventTouchUpInside];
+        [scrollView addSubview:button];
+        y += buttonHeight + spacing;
+    }
+    
+    // 分隔线
+    UIView *separatorLine = [[UIView alloc] initWithFrame:CGRectMake(15, y, menuWidth-30, 1)];
+    separatorLine.backgroundColor = [UIColor lightGrayColor];
+    [scrollView addSubview:separatorLine];
+    y += 15;
+    
+    // 男性数字人标签
+    UILabel *maleLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, y, menuWidth-30, 20)];
+    maleLabel.text = @"男性数字人";
+    maleLabel.font = [UIFont boldSystemFontOfSize:14];
+    [scrollView addSubview:maleLabel];
+    y += 25;
+    
+    // 男性数字人按钮
+    for (NSInteger i = 0; i < self.maleDigitalHumans.count; i++) {
+        NSDictionary *digitalHuman = self.maleDigitalHumans[i];
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        button.frame = CGRectMake(15, y, menuWidth-30, buttonHeight);
+        [button setTitle:digitalHuman[@"name"] forState:UIControlStateNormal];
+        [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+        button.backgroundColor = [UIColor whiteColor];
+        button.layer.cornerRadius = 3;
+        button.tag = i;
+        [button addTarget:self action:@selector(selectMaleDigitalHuman:) forControlEvents:UIControlEventTouchUpInside];
+        [scrollView addSubview:button];
+        y += buttonHeight + spacing;
+    }
+    
+    // 设置scrollView内容高度
+    scrollView.contentSize = CGSizeMake(menuWidth, y + 10);
     
     // 添加聊天按钮
     self.chatButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -221,6 +338,7 @@
 
 - (void)handleSpeakingFinished {
     self.isPlayingTTS = NO;
+    NSLog(@"音频播放完成");
     // 延迟一小段时间再播放下一个，确保前一个音频完全结束
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self playNextTTS];
@@ -236,6 +354,7 @@
     [self.audioQueue removeObjectAtIndex:0];
     
     self.isPlayingTTS = YES;
+    NSLog(@"开始播放音频 - 路径: %@", nextAudioPath);
     [[GJLDigitalManager manager] toSpeakWithPath:nextAudioPath];
 }
 
@@ -251,13 +370,15 @@
     [[AudioUtil sharedInstance] convertTextToSpeech:nextSentence completion:^(BOOL success, NSError *error) {
         if (success) {
             // 音频生成成功，添加到播放队列
-            [self.audioQueue addObject:[AudioUtil sharedInstance].currentAudioFilePath];
+            NSString *audioPath = [AudioUtil sharedInstance].currentAudioFilePath;
+            [self.audioQueue addObject:audioPath];
+            NSLog(@"TTS生成成功 - 文本: %@, 音频路径: %@", nextSentence, audioPath);
             // 如果当前没有在播放，开始播放
             if (!self.isPlayingTTS) {
                 [self playNextTTS];
             }
         } else {
-            NSLog(@"音频转换失败: %@", error);
+            NSLog(@"TTS生成失败 - 文本: %@, 错误: %@", nextSentence, error);
         }
         self.isGeneratingTTS = NO;
         // 继续生成下一个音频
@@ -425,27 +546,25 @@
 -(void)isDownModel
 {
     NSString *unzipPath = [self getHistoryCachePath:@"unZipCache"];
-    NSString * baseName=[[BASEMODELURL lastPathComponent] stringByDeletingPathExtension];
-    self.basePath=[NSString stringWithFormat:@"%@/%@",unzipPath,baseName];
+    NSString *baseName = [[BASEMODELURL lastPathComponent] stringByDeletingPathExtension];
+    self.basePath = [NSString stringWithFormat:@"%@/%@", unzipPath, baseName];
     
-    NSString * digitalName=[[DIGITALMODELURL lastPathComponent] stringByDeletingPathExtension];
-    self.digitalPath=[NSString stringWithFormat:@"%@/%@",unzipPath,digitalName];
-    NSFileManager * fileManger=[NSFileManager defaultManager];
-    if((![fileManger fileExistsAtPath:self.basePath])&&(![fileManger fileExistsAtPath:self.digitalPath]))
+    NSString *digitalName = [[self.currentDigitalHumanURL lastPathComponent] stringByDeletingPathExtension];
+    self.digitalPath = [NSString stringWithFormat:@"%@/%@", unzipPath, digitalName];
+    
+    NSFileManager *fileManger = [NSFileManager defaultManager];
+    if((![fileManger fileExistsAtPath:self.basePath]) && (![fileManger fileExistsAtPath:self.digitalPath]))
     {
         //下载基础模型和数字人模型
         [self toDownBaseModelAndDigital];
-
     }
-   else if (![fileManger fileExistsAtPath:self.digitalPath])
+    else if (![fileManger fileExistsAtPath:self.digitalPath])
     {
         //数字人模型
         [SVProgressHUD show];
         [SVProgressHUD setDefaultMaskType:SVProgressHUDMaskTypeBlack];
         [self toDownDigitalModel];
     }
-    
-
 }
 //下载基础模型----不同的数字人模型使用同一个基础模型
 -(void)toDownBaseModelAndDigital
@@ -489,7 +608,7 @@
 {
     __weak typeof(self)weakSelf = self;
     NSString *zipPath = [self getHistoryCachePath:@"ZipCache"];
-    [[HttpClient manager] downloadWithURL:DIGITALMODELURL savePathURL:[NSURL fileURLWithPath:zipPath] pathExtension:nil progress:^(NSProgress * progress) {
+    [[HttpClient manager] downloadWithURL:self.currentDigitalHumanURL savePathURL:[NSURL fileURLWithPath:zipPath] pathExtension:nil progress:^(NSProgress * progress) {
         double down_progress=0.5+(double)progress.completedUnitCount/(double)progress.totalUnitCount*0.5;
         [SVProgressHUD showProgress:down_progress status:@"正在下载数字人模型"];
     } success:^(NSURLResponse *response, NSURL *filePath) {
@@ -508,6 +627,14 @@
     // 设置背景透明，去除水印
     [GJLDigitalManager manager].backType = 0;
  
+    // 使用当前选择的数字人 URL
+    NSString *unzipPath = [self getHistoryCachePath:@"unZipCache"];
+    NSString *baseName = [[BASEMODELURL lastPathComponent] stringByDeletingPathExtension];
+    self.basePath = [NSString stringWithFormat:@"%@/%@", unzipPath, baseName];
+    
+    NSString *digitalName = [[self.currentDigitalHumanURL lastPathComponent] stringByDeletingPathExtension];
+    self.digitalPath = [NSString stringWithFormat:@"%@/%@", unzipPath, digitalName];
+    
     NSInteger result = [[GJLDigitalManager manager] initBaseModel:weakSelf.basePath digitalModel:self.digitalPath showView:weakSelf.showView];
     if(result==1)
     {
@@ -869,6 +996,51 @@
     self.chatInputField.frame = CGRectMake(10, 10, self.view.bounds.size.width - 80, 40);
     sendButton.frame = CGRectMake(self.view.bounds.size.width - 60, 10, 50, 40);
     self.chatTableView.frame = CGRectMake(0, 100, self.view.bounds.size.width, self.view.bounds.size.height - 160);
+}
+
+#pragma mark - Digital Human Selection
+
+- (void)toggleDigitalHumanMenu {
+    self.digitalHumanMenuView.hidden = !self.digitalHumanMenuView.hidden;
+}
+
+- (void)selectFemaleDigitalHuman:(UIButton *)sender {
+    NSDictionary *digitalHuman = self.femaleDigitalHumans[sender.tag];
+    [self selectDigitalHuman:digitalHuman];
+}
+
+- (void)selectMaleDigitalHuman:(UIButton *)sender {
+    NSDictionary *digitalHuman = self.maleDigitalHumans[sender.tag];
+    [self selectDigitalHuman:digitalHuman];
+}
+
+- (void)selectDigitalHuman:(NSDictionary *)digitalHuman {
+    self.currentDigitalHumanName = digitalHuman[@"name"];
+    self.currentDigitalHumanURL = digitalHuman[@"url"];
+    
+    // 更新按钮标题
+    [self.digitalHumanButton setTitle:[NSString stringWithFormat:@"当前：%@", self.currentDigitalHumanName] forState:UIControlStateNormal];
+    
+    // 隐藏菜单
+    self.digitalHumanMenuView.hidden = YES;
+    
+    // 如果已经初始化过，需要重新下载新的数字人模型
+    if (self.isRequest) {
+        [SVProgressHUD showWithStatus:@"正在切换数字人..."];
+        
+        // 删除旧的数字人模型
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        NSString *unzipPath = [self getHistoryCachePath:@"unZipCache"];
+        NSString *digitalName = [[self.currentDigitalHumanURL lastPathComponent] stringByDeletingPathExtension];
+        NSString *oldDigitalPath = [NSString stringWithFormat:@"%@/%@", unzipPath, digitalName];
+        
+        if ([fileManager fileExistsAtPath:oldDigitalPath]) {
+            [fileManager removeItemAtPath:oldDigitalPath error:nil];
+        }
+        
+        // 下载新的数字人模型
+        [self toDownDigitalModel];
+    }
 }
 
 @end

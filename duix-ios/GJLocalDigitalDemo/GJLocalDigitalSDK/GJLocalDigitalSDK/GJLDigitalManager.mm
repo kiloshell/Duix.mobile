@@ -89,6 +89,8 @@ static GJLDigitalManager * manager = nil;
 //uuid
 @property (nonatomic, strong) NSString *uuid;
 
+@property (nonatomic, strong) NSMutableDictionary *audioStartTimes; // 记录每个音频开始播放的时间
+
 @end
 @implementation GJLDigitalManager
 
@@ -110,6 +112,7 @@ static GJLDigitalManager * manager = nil;
 
         [DigitalHumanDriven manager].isStop=NO;
         self.wavArr=[[NSMutableArray alloc] init];
+        self.audioStartTimes = [[NSMutableDictionary alloc] init];
         // self.playImageQueue= dispatch_queue_create("com.duixsdk.playImageQueue", DISPATCH_QUEUE_CONCURRENT);
         //        self.mat_type=0;
     }
@@ -541,23 +544,25 @@ static GJLDigitalManager * manager = nil;
         _auidoPlayView.playStatus = ^(AVPlayerItemStatus status) {
             if(status==AVPlayerItemStatusReadyToPlay)
             {
-                
-                
-                //                NSLog(@"开始播放:%@",weakSelf.auidoPlayView.urlstr);
                 __strong __typeof(weakSelf) strongSelf = weakSelf;
                 if(strongSelf.isPlay)
                 {
+                    // 计算并记录从开始到实际播放的耗时
+                    NSDate *startTime = [strongSelf.audioStartTimes objectForKey:weakSelf.auidoPlayView.urlstr];
+                    if (startTime) {
+                        NSTimeInterval timeInterval = [[NSDate date] timeIntervalSinceDate:startTime];
+                        NSLog(@"音频播放准备耗时统计 - 文件: %@, 耗时: %.3f秒", weakSelf.auidoPlayView.urlstr, timeInterval);
+                        [strongSelf.audioStartTimes removeObjectForKey:weakSelf.auidoPlayView.urlstr];
+                    }
                     
                     [strongSelf.auidoPlayView play];
                 }
-                
             }
         };
         _auidoPlayView.playFailed = ^{
             __strong __typeof(weakSelf) strongSelf = weakSelf;
             if(strongSelf.isPlay)
             {
-                
                 [strongSelf toPlayAudioEnd];
             }
         };
@@ -567,8 +572,6 @@ static GJLDigitalManager * manager = nil;
             __strong __typeof(weakSelf) strongSelf = weakSelf;
             if(strongSelf.isPlay)
             {
-                NSLog(@"播放结束:%@",weakSelf.auidoPlayView.urlstr);
-                // 发送播放完成通知
                 [[NSNotificationCenter defaultCenter] postNotificationName:@"GJLDigitalManagerDidFinishSpeaking" object:nil];
                 [strongSelf toPlayAudioEnd];
             }
@@ -977,6 +980,9 @@ static GJLDigitalManager * manager = nil;
     {
        return;
     }
+    // 记录开始时间
+    [self.audioStartTimes setObject:[NSDate date] forKey:wavPath];
+    
     [self.wavArr addObject:wavPath];
     if(self.wavArr.count>0&&self.isWaving==NO)
     {
